@@ -1,0 +1,105 @@
+# DigitalFix - capa de datos para desarrollo local.
+#
+# Por ahora solo Oracle XE. RabbitMQ, Kafka y Zookeeper quedan declarados mas
+# abajo pero comentados: se activan en la fase de notificaciones (F3), para no
+# gastar memoria en un equipo de desarrollo mientras todavia no se usan.
+#
+#   docker compose -f compose/docker-compose.datos.yml up -d
+#   docker compose -f compose/docker-compose.datos.yml ps
+#   docker compose -f compose/docker-compose.datos.yml down          (conserva datos)
+#   docker compose -f compose/docker-compose.datos.yml down -v       (borra todo)
+
+name: digitalfix-datos
+
+services:
+  oracle:
+    image: gvenzl/oracle-xe:21-slim-faststart
+    container_name: digitalfix-oracle
+    environment:
+      # Contrasena de SYS y SYSTEM. Obligatoria: si no esta definida, el compose falla.
+      ORACLE_PASSWORD: ${ORACLE_PASSWORD:?falta ORACLE_PASSWORD, copia .env.example a .env}
+      # La imagen crea este usuario ademas de los esquemas del init.
+      APP_USER: ${ORACLE_APP_USER:-digitalfix}
+      APP_USER_PASSWORD: ${ORACLE_APP_PASSWORD:?falta ORACLE_APP_PASSWORD}
+    ports:
+      - "${ORACLE_PORT:-1521}:1521"
+    volumes:
+      - oracle-datos:/opt/oracle/oradata
+      # Todo .sql de esta carpeta corre una sola vez, al crear la base.
+      - ./init-oracle:/container-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD", "healthcheck.sh"]
+      interval: 10s
+      timeout: 5s
+      retries: 40
+      start_period: 90s
+    restart: unless-stopped
+
+  # --------------------------------------------------------------------------
+  # Mensajeria. Se activa en la fase F3 (notificaciones) descomentando esto.
+  # --------------------------------------------------------------------------
+  # rabbitmq:
+  #   image: rabbitmq:3.13-management-alpine
+  #   container_name: digitalfix-rabbit
+  #   environment:
+  #     RABBITMQ_DEFAULT_USER: ${RABBIT_USER:-digitalfix}
+  #     RABBITMQ_DEFAULT_PASS: ${RABBIT_PASSWORD:?falta RABBIT_PASSWORD}
+  #   ports:
+  #     - "${RABBIT_PORT:-5672}:5672"
+  #     - "${RABBIT_UI_PORT:-15672}:15672"
+  #   volumes:
+  #     - rabbit-datos:/var/lib/rabbitmq
+  #   healthcheck:
+  #     test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+  #     interval: 10s
+  #     timeout: 5s
+  #     retries: 20
+  #   restart: unless-stopped
+  #
+  # zookeeper:
+  #   image: confluentinc/cp-zookeeper:7.6.1
+  #   container_name: digitalfix-zookeeper
+  #   environment:
+  #     ZOOKEEPER_CLIENT_PORT: 2181
+  #     ZOOKEEPER_TICK_TIME: 2000
+  #   volumes:
+  #     - zookeeper-datos:/var/lib/zookeeper/data
+  #   healthcheck:
+  #     test: ["CMD-SHELL", "echo ruok | nc -w 2 localhost 2181 | grep imok"]
+  #     interval: 10s
+  #     timeout: 5s
+  #     retries: 20
+  #   restart: unless-stopped
+  #
+  # kafka:
+  #   image: confluentinc/cp-kafka:7.6.1
+  #   container_name: digitalfix-kafka
+  #   depends_on:
+  #     zookeeper:
+  #       condition: service_healthy
+  #   environment:
+  #     KAFKA_BROKER_ID: 1
+  #     KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+  #     KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,EXTERNO:PLAINTEXT
+  #     KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,EXTERNO://localhost:${KAFKA_PORT:-9092}
+  #     KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:29092,EXTERNO://0.0.0.0:9092
+  #     KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+  #     KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+  #     KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
+  #   ports:
+  #     - "${KAFKA_PORT:-9092}:9092"
+  #   volumes:
+  #     - kafka-datos:/var/lib/kafka/data
+  #   healthcheck:
+  #     test: ["CMD-SHELL", "kafka-broker-api-versions --bootstrap-server localhost:29092 >/dev/null 2>&1"]
+  #     interval: 15s
+  #     timeout: 10s
+  #     retries: 20
+  #     start_period: 45s
+  #   restart: unless-stopped
+
+volumes:
+  oracle-datos:
+  # rabbit-datos:
+  # zookeeper-datos:
+  # kafka-datos:
