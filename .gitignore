@@ -1,0 +1,18 @@
+# Variables con credenciales reales. El .env.example si se versiona.
+.env
+.env.*
+!.env.example
+
+# Volumenes y datos locales
+datos/
+*.dbf
+
+# Sistema operativo
+Thumbs.db
+desktop.ini
+.DS_Store
+
+# Editores
+.idea/
+.vscode/
+*.swp
