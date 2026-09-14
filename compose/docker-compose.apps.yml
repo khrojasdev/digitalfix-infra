@@ -1,0 +1,131 @@
+# DigitalFix - capa de aplicaciones.
+#
+# Levanta los servicios de aplicacion contra la capa de datos, que vive en
+# docker-compose.datos.yml y se levanta aparte. Son dos compose y no uno a
+# proposito: la base de datos tarda minutos en arrancar la primera vez y no
+# tiene por que reiniciarse cada vez que se redespliega un servicio.
+#
+# ESTRUCTURA DE CARPETAS QUE ESPERA
+# ---------------------------------
+# Los repositorios tienen que estar clonados uno al lado del otro:
+#
+#   DigitalFix/
+#     digitalfix-infra/        <- aqui vive este archivo
+#     ms-digitalfix-bff/
+#     ms-digitalfix-catalog/
+#     ms-digitalfix-usuarios/
+#     digitalfix-frontend/
+#
+# USO
+# ---
+#   1. Levantar primero la capa de datos y esperar a que quede healthy:
+#        .\scripts\levantar-datos.ps1
+#   2. Levantar las aplicaciones:
+#        docker compose -f compose/docker-compose.apps.yml --env-file .env up -d --build
+#   3. Ver como van:
+#        docker compose -f compose/docker-compose.apps.yml ps
+#        docker compose -f compose/docker-compose.apps.yml logs -f bff
+#
+# LA RED
+# ------
+# Las aplicaciones se enganchan a la red que ya creo el compose de datos, asi
+# que llegan a Oracle por el nombre del servicio: //oracle:1521/XEPDB1. No hace
+# falta publicar puertos de la base ni usar host.docker.internal.
+
+name: digitalfix-apps
+
+services:
+
+  # ---------------------------------------------------------------- catalogo
+  catalogo:
+    build:
+      context: ../../ms-digitalfix-catalog
+      dockerfile: Dockerfile
+    image: digitalfix/ms-catalog:local
+    container_name: digitalfix-catalogo
+    environment:
+      SERVER_PORT: 8082
+      SPRING_DATASOURCE_URL: jdbc:oracle:thin:@//oracle:1521/XEPDB1
+      SPRING_DATASOURCE_USERNAME: DFX_CATALOG
+      SPRING_DATASOURCE_PASSWORD: ${DFX_CATALOG_PASSWORD:?falta DFX_CATALOG_PASSWORD en .env}
+    ports:
+      - "${CATALOGO_PUERTO:-8082}:8082"
+    networks:
+      - datos
+    restart: unless-stopped
+
+  # --------------------------------------------------------------------- BFF
+  bff:
+    build:
+      context: ../../ms-digitalfix-bff
+      dockerfile: Dockerfile
+    image: digitalfix/ms-bff:local
+    container_name: digitalfix-bff
+    depends_on:
+      catalogo:
+        condition: service_healthy
+    environment:
+      PUERTO: 8080
+      # dentro de la red se llega por el nombre del servicio, no por localhost
+      CATALOGO_URL: http://catalogo:8082
+      # Mientras HU-05 no configure el resource server, el contexto se resuelve
+      # en modo desarrollo. Sin estas cuatro variables el BFF responde 401 a
+      # todo, que es el comportamiento correcto: sin identidad no se atiende.
+      DIGITALFIX_CONTEXTO_MODODESARROLLO: ${BFF_MODO_DESARROLLO:-true}
+      DIGITALFIX_CONTEXTO_OIDPORDEFECTO: ${BFF_OID_POR_DEFECTO:-seed-emp01-admin}
+      DIGITALFIX_CONTEXTO_EMPRESAPORDEFECTO: ${BFF_EMPRESA_POR_DEFECTO:-1}
+      DIGITALFIX_CONTEXTO_ROLESPORDEFECTO: ${BFF_ROLES_POR_DEFECTO:-Admin}
+    ports:
+      - "${BFF_PUERTO:-8080}:8080"
+    networks:
+      - datos
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------- usuarios
+  # Descomentar cuando ms-digitalfix-usuarios tenga su Dockerfile y lea
+  # SERVER_PORT. Hoy no define puerto, asi que arrancaria en el 8080 y chocaria
+  # con el BFF.
+  #
+  # usuarios:
+  #   build:
+  #     context: ../../ms-digitalfix-usuarios
+  #     dockerfile: Dockerfile
+  #   image: digitalfix/ms-usuarios:local
+  #   container_name: digitalfix-usuarios
+  #   environment:
+  #     SERVER_PORT: 8081
+  #     SPRING_DATASOURCE_URL: jdbc:oracle:thin:@//oracle:1521/XEPDB1
+  #     SPRING_DATASOURCE_USERNAME: DFX_USUARIOS
+  #     SPRING_DATASOURCE_PASSWORD: ${DFX_USUARIOS_PASSWORD:?falta DFX_USUARIOS_PASSWORD}
+  #   ports:
+  #     - "${USUARIOS_PUERTO:-8081}:8081"
+  #   networks:
+  #     - datos
+  #   restart: unless-stopped
+
+  # ---------------------------------------------------------------- frontend
+  # Descomentar cuando digitalfix-frontend tenga su Dockerfile (HU-09.6).
+  # La URL de la API se fija en tiempo de compilacion, en environment.ts: para
+  # el despliegue tiene que apuntar al API Gateway, no a este BFF directamente.
+  #
+  # frontend:
+  #   build:
+  #     context: ../../digitalfix-frontend
+  #     dockerfile: Dockerfile
+  #   image: digitalfix/frontend:local
+  #   container_name: digitalfix-frontend
+  #   depends_on:
+  #     bff:
+  #       condition: service_healthy
+  #   ports:
+  #     - "${FRONTEND_PUERTO:-4200}:80"
+  #   networks:
+  #     - datos
+  #   restart: unless-stopped
+
+networks:
+  # Red que ya creo docker-compose.datos.yml. Se referencia como externa para
+  # no duplicarla ni obligar a levantar los dos compose juntos.
+  datos:
+    name: digitalfix-datos_default
+    external: true
