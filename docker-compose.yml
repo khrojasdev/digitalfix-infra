@@ -1,0 +1,35 @@
+services:
+  ms-usuarios:
+    image: ${DOCKER_USER}/digitalfix-ms-usuarios:latest
+    container_name: ms-usuarios
+    ports:
+      - "8081:8081"
+    environment:
+      - SPRING_PROFILES_ACTIVE=local
+      - SPRING_DATASOURCE_URL=${DB_URL}
+      - ORACLE_USUARIOS_PASSWORD=${ORACLE_USUARIOS_PASSWORD}
+      - AZURE_TENANT_ID=${AZURE_TENANT_ID}
+
+  ms-catalog:
+    image: ${DOCKER_USER}/digitalfix-ms-catalog:latest
+    container_name: ms-catalog
+    ports:
+      - "8082:8082"
+    environment:
+      - SPRING_PROFILES_ACTIVE=local
+      - SPRING_DATASOURCE_URL=${DB_URL}
+      - AZURE_TENANT_ID=${AZURE_TENANT_ID}
+
+  ms-bff:
+    image: ${DOCKER_USER}/digitalfix-ms-bff:latest
+    container_name: ms-bff
+    ports:
+      - "8080:8080"
+    environment:
+      - SPRING_PROFILES_ACTIVE=local
+      - USUARIOS_URL=http://ms-usuarios:8081
+      - CATALOGO_URL=http://ms-catalog:8082
+      - AZURE_TENANT_ID=${AZURE_TENANT_ID}
+    depends_on:
+      - ms-usuarios
+      - ms-catalog
