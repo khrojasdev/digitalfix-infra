@@ -1,4 +1,14 @@
 services:
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: rabbitmq
+    ports:
+      - "5672:5672"   # Puerto de comunicación de microservicios
+      - "15672:15672" # Puerto de la consola web de administración
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD}
+
   ms-usuarios:
     image: ${DOCKER_USER}/digitalfix-ms-usuarios:latest
     container_name: ms-usuarios
@@ -20,6 +30,40 @@ services:
       - SPRING_DATASOURCE_URL=${DB_URL}
       - AZURE_TENANT_ID=${AZURE_TENANT_ID}
 
+  ms-report:
+    image: ${DOCKER_USER}/digitalfix-ms-report:latest
+    container_name: ms-report
+    ports:
+      - "8085:8085"
+    environment:
+      - SPRING_PROFILES_ACTIVE=local
+      - SPRING_DATASOURCE_URL=${DB_URL}
+      - ORACLE_REPORT_PASSWORD=${ORACLE_REPORT_PASSWORD}
+      - AZURE_TENANT_ID=${AZURE_TENANT_ID}
+      - RABBITMQ_HOST=rabbitmq
+      - RABBITMQ_PORT=5672
+      - RABBITMQ_USER=${RABBITMQ_USER}
+      - RABBITMQ_PASSWORD=${RABBITMQ_PASSWORD}
+    depends_on:
+      - rabbitmq
+
+  ms-audit:
+    image: ${DOCKER_USER}/digitalfix-ms-audit:latest
+    container_name: ms-audit
+    ports:
+      - "8086:8086"
+    environment:
+      - SPRING_PROFILES_ACTIVE=local
+      - SPRING_DATASOURCE_URL=${DB_URL}
+      - ORACLE_AUDIT_PASSWORD=${ORACLE_AUDIT_PASSWORD}
+      - AZURE_TENANT_ID=${AZURE_TENANT_ID}
+      - RABBITMQ_HOST=rabbitmq
+      - RABBITMQ_PORT=5672
+      - RABBITMQ_USER=${RABBITMQ_USER}
+      - RABBITMQ_PASSWORD=${RABBITMQ_PASSWORD}
+    depends_on:
+      - rabbitmq
+
   ms-bff:
     image: ${DOCKER_USER}/digitalfix-ms-bff:latest
     container_name: ms-bff
@@ -29,7 +73,11 @@ services:
       - SPRING_PROFILES_ACTIVE=local
       - USUARIOS_URL=http://ms-usuarios:8081
       - CATALOGO_URL=http://ms-catalog:8082
+      - REPORTES_URL=http://ms-report:8085
+      - AUDITORIA_URL=http://ms-audit:8086
       - AZURE_TENANT_ID=${AZURE_TENANT_ID}
     depends_on:
       - ms-usuarios
       - ms-catalog
+      - ms-report
+      - ms-audit
