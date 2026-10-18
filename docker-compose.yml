@@ -1,13 +1,34 @@
 services:
+  oracle:
+    image: gvenzl/oracle-xe:21-slim-faststart
+    container_name: digitalfix-oracle
+    ports:
+      - "1521:1521"
+    environment:
+      - ORACLE_PASSWORD=digitalfix
+    volumes:
+      - ./compose/init-oracle:/container-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD", "healthcheck.sh"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+      start_period: 3m
+
   rabbitmq:
     image: rabbitmq:3-management
     container_name: rabbitmq
     ports:
-      - "5672:5672"   # Puerto de comunicación de microservicios
-      - "15672:15672" # Puerto de la consola web de administración
+      - "5672:5672"
+      - "15672:15672"
     environment:
       RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER}
       RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD}
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
 
   ms-usuarios:
     image: ${DOCKER_USER}/digitalfix-ms-usuarios:latest
@@ -19,6 +40,9 @@ services:
       - SPRING_DATASOURCE_URL=${DB_URL}
       - ORACLE_USUARIOS_PASSWORD=${ORACLE_USUARIOS_PASSWORD}
       - AZURE_TENANT_ID=${AZURE_TENANT_ID}
+    depends_on:
+      oracle:
+        condition: service_healthy
 
   ms-catalog:
     image: ${DOCKER_USER}/digitalfix-ms-catalog:latest
@@ -28,7 +52,11 @@ services:
     environment:
       - SPRING_PROFILES_ACTIVE=local
       - SPRING_DATASOURCE_URL=${DB_URL}
+      - ORACLE_CATALOG_PASSWORD=${ORACLE_CATALOG_PASSWORD}
       - AZURE_TENANT_ID=${AZURE_TENANT_ID}
+    depends_on:
+      oracle:
+        condition: service_healthy
 
   ms-workorders:
     image: ${DOCKER_USER}/digitalfix-ms-workorders:latest
@@ -45,7 +73,10 @@ services:
       - RABBITMQ_USER=${RABBITMQ_USER}
       - RABBITMQ_PASSWORD=${RABBITMQ_PASSWORD}
     depends_on:
-      - rabbitmq
+      oracle:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
 
   ms-report:
     image: ${DOCKER_USER}/digitalfix-ms-report:latest
@@ -62,7 +93,10 @@ services:
       - RABBITMQ_USER=${RABBITMQ_USER}
       - RABBITMQ_PASSWORD=${RABBITMQ_PASSWORD}
     depends_on:
-      - rabbitmq
+      oracle:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
 
   ms-audit:
     image: ${DOCKER_USER}/digitalfix-ms-audit:latest
@@ -79,7 +113,10 @@ services:
       - RABBITMQ_USER=${RABBITMQ_USER}
       - RABBITMQ_PASSWORD=${RABBITMQ_PASSWORD}
     depends_on:
-      - rabbitmq
+      oracle:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
 
   ms-bff:
     image: ${DOCKER_USER}/digitalfix-ms-bff:latest

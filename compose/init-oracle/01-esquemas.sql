@@ -1,13 +1,3 @@
--- DigitalFix - un esquema por microservicio.
---
--- Corre UNA SOLA VEZ, cuando el contenedor crea la base. Si necesitas volver a
--- ejecutarlo: docker compose -f compose/docker-compose.datos.yml down -v
---
--- La regla del proyecto es que cada microservicio es dueno exclusivo de su
--- esquema. Ningun servicio recibe permisos sobre el esquema de otro: las
--- referencias entre servicios se resuelven por HTTP o por evento, nunca con un
--- join entre esquemas.
-
 ALTER SESSION SET CONTAINER = XEPDB1;
 
 DECLARE
@@ -41,7 +31,3 @@ BEGIN
     END LOOP;
 END;
 /
-
--- La clave de desarrollo es la misma para los cinco a proposito: en local no
--- aporta nada tener cinco distintas y complica el arranque. En la nube (T-25)
--- cada esquema lleva su propia credencial, inyectada por variable de entorno.
