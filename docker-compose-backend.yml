@@ -1,0 +1,123 @@
+services:
+  ms-usuarios:
+    image: ${DOCKER_USER}/digitalfix-ms-usuarios:latest
+    container_name: ms-usuarios
+    ports:
+      - "8081:8081"
+    environment:
+      - JAVA_TOOL_OPTIONS=-Xmx300m
+      - SPRING_PROFILES_ACTIVE=local
+      - SPRING_DATASOURCE_URL=${DB_URL}
+      - ORACLE_USUARIOS_PASSWORD=${ORACLE_USUARIOS_PASSWORD}
+      - AZURE_TENANT_ID=${AZURE_TENANT_ID}
+
+  ms-catalog:
+    image: ${DOCKER_USER}/digitalfix-ms-catalog:latest
+    container_name: ms-catalog
+    ports:
+      - "8082:8082"
+    environment:
+      - JAVA_TOOL_OPTIONS=-Xmx300m
+      - SPRING_PROFILES_ACTIVE=local
+      - SPRING_DATASOURCE_URL=${DB_URL}
+      - ORACLE_CATALOG_PASSWORD=${ORACLE_CATALOG_PASSWORD}
+      - AZURE_TENANT_ID=${AZURE_TENANT_ID}
+
+  ms-workorders:
+    image: ${DOCKER_USER}/digitalfix-ms-workorders:latest
+    container_name: ms-workorders
+    ports:
+      - "8083:8083"
+    environment:
+      - JAVA_TOOL_OPTIONS=-Xmx300m
+      - SPRING_PROFILES_ACTIVE=local
+      - SPRING_DATASOURCE_URL=${DB_URL}
+      - ORACLE_WORKORDERS_PASSWORD=${ORACLE_WORKORDERS_PASSWORD}
+      - AZURE_TENANT_ID=${AZURE_TENANT_ID}
+      - RABBITMQ_HOST=${RABBITMQ_HOST}
+      - RABBITMQ_PORT=5672
+      - RABBITMQ_USER=${RABBITMQ_USER}
+      - RABBITMQ_PASSWORD=${RABBITMQ_PASSWORD}
+
+  ms-report:
+    image: ${DOCKER_USER}/digitalfix-ms-report:latest
+    container_name: ms-report
+    ports:
+      - "8085:8085"
+    environment:
+      - JAVA_TOOL_OPTIONS=-Xmx300m
+      - SPRING_PROFILES_ACTIVE=local
+      - SPRING_DATASOURCE_URL=${DB_URL}
+      - ORACLE_REPORT_PASSWORD=${ORACLE_REPORT_PASSWORD}
+      - AZURE_TENANT_ID=${AZURE_TENANT_ID}
+      - RABBITMQ_HOST=${RABBITMQ_HOST}
+      - RABBITMQ_PORT=5672
+      - RABBITMQ_USER=${RABBITMQ_USER}
+      - RABBITMQ_PASSWORD=${RABBITMQ_PASSWORD}
+
+  ms-audit:
+    image: ${DOCKER_USER}/digitalfix-ms-audit:latest
+    container_name: ms-audit
+    ports:
+      - "8086:8086"
+    environment:
+      - JAVA_TOOL_OPTIONS=-Xmx300m
+      - SPRING_PROFILES_ACTIVE=local
+      - SPRING_DATASOURCE_URL=${DB_URL}
+      - ORACLE_AUDIT_PASSWORD=${ORACLE_AUDIT_PASSWORD}
+      - AZURE_TENANT_ID=${AZURE_TENANT_ID}
+      - RABBITMQ_HOST=${RABBITMQ_HOST}
+      - RABBITMQ_PORT=5672
+      - RABBITMQ_USER=${RABBITMQ_USER}
+      - RABBITMQ_PASSWORD=${RABBITMQ_PASSWORD}
+
+  ms-notify:
+    image: ${DOCKER_USER}/digitalfix-ms-notify:latest
+    container_name: ms-notify
+    ports:
+      - "8087:8087"
+    environment:
+      - JAVA_TOOL_OPTIONS=-Xmx300m
+      - SPRING_PROFILES_ACTIVE=local
+      - RABBITMQ_HOST=${RABBITMQ_HOST}
+      - RABBITMQ_PORT=5672
+      - RABBITMQ_USER=${RABBITMQ_USER}
+      - RABBITMQ_PASSWORD=${RABBITMQ_PASSWORD}
+
+  ms-rabbitadmin:
+    image: ${DOCKER_USER}/digitalfix-ms-rabbitadmin:latest
+    container_name: ms-rabbitadmin
+    ports:
+      - "8088:8088"
+    environment:
+      - JAVA_TOOL_OPTIONS=-Xmx300m
+      - SPRING_PROFILES_ACTIVE=local
+      - RABBITMQ_HOST=${RABBITMQ_HOST}
+      - RABBITMQ_PORT=5672
+      - RABBITMQ_USER=${RABBITMQ_USER}
+      - RABBITMQ_PASSWORD=${RABBITMQ_PASSWORD}
+
+  ms-bff:
+    image: ${DOCKER_USER}/digitalfix-ms-bff:latest
+    container_name: ms-bff
+    ports:
+      - "8080:8080"
+    environment:
+      - JAVA_TOOL_OPTIONS=-Xmx300m
+      - SPRING_PROFILES_ACTIVE=local
+      - USUARIOS_URL=http://ms-usuarios:8081
+      - CATALOGO_URL=http://ms-catalog:8082
+      - WORKORDERS_URL=http://ms-workorders:8083
+      - REPORTES_URL=http://ms-report:8085
+      - AUDITORIA_URL=http://ms-audit:8086
+      - NOTIFY_URL=http://ms-notify:8087
+      - RABBITADMIN_URL=http://ms-rabbitadmin:8088
+      - AZURE_TENANT_ID=${AZURE_TENANT_ID}
+    depends_on:
+      - ms-usuarios
+      - ms-catalog
+      - ms-workorders
+      - ms-report
+      - ms-audit
+      - ms-notify
+      - ms-rabbitadmin
