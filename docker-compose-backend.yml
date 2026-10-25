@@ -79,6 +79,9 @@ services:
     environment:
       - JAVA_TOOL_OPTIONS=-Xmx300m
       - SPRING_PROFILES_ACTIVE=local
+      # ms-notify escucha por defecto en 8084; se fija en 8087, que es el puerto
+      # publicado y el que usa el BFF (NOTIFY_URL)
+      - PUERTO=8087
       - RABBITMQ_HOST=${RABBITMQ_HOST}
       - RABBITMQ_PORT=5672
       - RABBITMQ_USER=${RABBITMQ_USER}
@@ -92,6 +95,8 @@ services:
     environment:
       - JAVA_TOOL_OPTIONS=-Xmx300m
       - SPRING_PROFILES_ACTIVE=local
+      # ms-rabbitadmin escucha por defecto en 8087; se alinea con el puerto publicado
+      - PUERTO=8088
       - RABBITMQ_HOST=${RABBITMQ_HOST}
       - RABBITMQ_PORT=5672
       - RABBITMQ_USER=${RABBITMQ_USER}
