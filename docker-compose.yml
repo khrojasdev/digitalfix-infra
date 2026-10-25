@@ -198,6 +198,7 @@ services:
       - WORKORDERS_URL=http://ms-workorders:8083
       - REPORTES_URL=http://ms-report:8085
       - AUDITORIA_URL=http://ms-audit:8086
+      - NOTIFY_URL=http://ms-notify:8084
       - AZURE_TENANT_ID=${AZURE_TENANT_ID}
     depends_on:
       - ms-usuarios
@@ -205,3 +206,4 @@ services:
       - ms-workorders
       - ms-report
       - ms-audit
+      - ms-notify
